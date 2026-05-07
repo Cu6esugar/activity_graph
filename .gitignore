@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 22576860731_ACTIVITY.fit
 *.fit
+PyGeoCN/
