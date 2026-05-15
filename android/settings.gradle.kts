@@ -24,3 +24,15 @@ plugins {
 }
 
 include(":app")
+
+gradle.beforeProject {
+    if (project.name != "app") {
+        project.afterEvaluate {
+            if (project.hasProperty("android")) {
+                project.extensions.configure<com.android.build.gradle.BaseExtension>("android") {
+                    compileSdkVersion(36)
+                }
+            }
+        }
+    }
+}

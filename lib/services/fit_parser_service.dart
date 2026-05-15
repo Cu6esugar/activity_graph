@@ -127,12 +127,21 @@ class FitParserService {
       return null;
     }
     
-    final utcTime = DateTime.fromMillisecondsSinceEpoch(
-      (timestampValue * 1000).toInt() + 315537600000,
-      isUtc: true,
+    print('Raw FIT timestamp value: $timestampValue');
+    
+    // FIT timestamp base: 1989-12-31 00:00:00 UTC (Garmin epoch)
+    // Convert to milliseconds since Unix epoch (1970-01-01)
+    final unixTimestampMs = (timestampValue * 1000).toInt() + 631065600000;
+    
+    // Create datetime directly as local time (no UTC conversion)
+    final localTime = DateTime.fromMillisecondsSinceEpoch(
+      unixTimestampMs,
+      isUtc: false, // Treat as local time directly
     );
     
-    return utcTime.toLocal();
+    print('FIT timestamp (local): $localTime');
+    
+    return localTime;
   }
   
   double? _extractValueFromMessage(DataMessage message, String fieldName) {

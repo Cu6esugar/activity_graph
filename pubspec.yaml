@@ -39,7 +39,7 @@ dependencies:
   image_picker: ^1.0.7
   
   # File picker for FIT files
-  file_picker: ^8.0.0
+  file_picker: 8.3.7
   
   # EXIF data reading
   exif: ^3.3.0

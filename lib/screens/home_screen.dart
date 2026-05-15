@@ -54,14 +54,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showTimestamp = true;
   
   Color _trackColor = Colors.blue;
-  double _trackWidth = 3.0;
+  double _trackWidth = 2.5;
   Color _positionColor = Colors.red;
-  double _positionRadius = 10.0;
+  double _positionRadius = 6.0;
   Color _textColor = Colors.white;
-  double _textSize = 14.0;
+  double _textSize = 24.0;
   
   bool _isLoading = false;
   String? _errorMessage;
+  String _loadingMessage = '';
   
   Future<void> _selectImage() async {
     try {
@@ -115,8 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['fit'],
+        type: FileType.any,
       );
       
       if (result != null && result.files.isNotEmpty) {
@@ -133,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         setState(() {
           _isLoading = false;
+          _loadingMessage = '';
         });
       }
     } catch (e) {
@@ -216,6 +217,200 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
   
+  void _showFitInfoDialog() {
+    if (_fitData == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.blue.shade700),
+            const SizedBox(width: 8),
+            const Text('FIT File Information'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_fitData!.activityType != null)
+                Text('Activity: ${_fitData!.activityType!}'),
+              const SizedBox(height: 8),
+              Text('Start Time: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(_fitData!.startTime!)}'),
+              const SizedBox(height: 8),
+              Text('End Time: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(_fitData!.endTime!)}'),
+              const SizedBox(height: 8),
+              Text('Duration: ${_fitData!.formatTotalDuration()}'),
+              const SizedBox(height: 8),
+              Text('Total Distance: ${_fitData!.formatTotalDistance()}'),
+              const SizedBox(height: 8),
+              Text('GPS Points: ${_fitData!.gpsPoints.length}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showTimeSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              const Text('Time Selection'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_imageTimestamp != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'EXIF Time (from image):',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('yyyy-MM-dd HH:mm:ss').format(_imageTimestamp!),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                if (_imageTimestamp == null)
+                  Text(
+                    'No EXIF time found in image',
+                    style: TextStyle(fontSize: 12, color: Colors.orange[700]),
+                  ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Use Manual Time'),
+                  subtitle: Text(
+                    _useManualTime 
+                      ? 'Manual time will be used'
+                      : 'EXIF time will be used',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  value: _useManualTime,
+                  onChanged: (value) {
+                    setState(() {
+                      _useManualTime = value ?? false;
+                    });
+                    setDialogState(() {});
+                    _matchAndCalculate();
+                  },
+                ),
+                if (_useManualTime)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(top: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manual Time:',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _manualTimestamp != null
+                            ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_manualTimestamp!)
+                            : 'Not set',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _manualTimestamp != null ? Colors.black : Colors.orange[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await _selectManualTime();
+                            _showTimeSelectionDialog();
+                          },
+                          icon: const Icon(Icons.edit, size: 18),
+                          label: Text(_manualTimestamp != null ? 'Change' : 'Select'),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (_useManualTime ? Colors.orange.shade100 : Colors.green.shade100),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _useManualTime ? Icons.edit : Icons.check_circle,
+                        size: 16,
+                        color: (_useManualTime ? Colors.orange[700] : Colors.green[700]),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Using: ${_useManualTime ? "Manual" : "EXIF"}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: (_useManualTime ? Colors.orange[700] : Colors.green[700]),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_matchedPoint != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(top: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '✓ GPS matched at ${DateFormat('HH:mm:ss').format(_matchedPoint!.timestamp)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
   _ImageDisplayInfo _calculateImageDisplayArea(Size containerSize, Size imageOriginalSize) {
     final containerWidth = containerSize.width;
     final containerHeight = containerSize.height;
@@ -267,11 +462,17 @@ Future<void> _saveImageWithOverlay() async {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
+        _loadingMessage = 'Preparing image...';
       });
       
+      await Future.delayed(const Duration(milliseconds: 100)); // Allow UI to update
+      
       // Load original image
+      setState(() => _loadingMessage = 'Loading original image...');
       final originalImageFile = File(_imagePath!);
       final originalBytes = await originalImageFile.readAsBytes();
+      
+      setState(() => _loadingMessage = 'Decoding image...');
       final originalCodec = await ui.instantiateImageCodec(originalBytes);
       final originalFrame = await originalCodec.getNextFrame();
       final originalUiImage = originalFrame.image;
@@ -296,11 +497,11 @@ Future<void> _saveImageWithOverlay() async {
           imageSize: originalSize,
           activityName: _activityName,
           trackColor: _trackColor,
-          trackWidth: _trackWidth * scaleX,
+          trackWidth: _trackWidth,
           positionColor: _positionColor,
-          positionRadius: _positionRadius * scaleX,
+          positionRadius: _positionRadius,
           textColor: _textColor,
-          textSize: _textSize * scaleX,
+          textSize: _textSize,
           showTrack: _showTrack,
           showPosition: _showPosition,
           showPace: _showPace,
@@ -311,6 +512,7 @@ Future<void> _saveImageWithOverlay() async {
       }
       
       // Convert to image
+      setState(() => _loadingMessage = 'Rendering overlay...');
       final picture = recorder.endRecording();
       final finalImage = await picture.toImage(
         originalSize.width.toInt(),
@@ -327,11 +529,13 @@ Future<void> _saveImageWithOverlay() async {
       
       if (isOriginalJpg) {
         // For JPG originals, convert to JPG with quality 85
+        setState(() => _loadingMessage = 'Encoding as JPG...');
         final pngData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
         if (pngData == null) {
           setState(() {
             _isLoading = false;
             _errorMessage = 'Failed to convert image';
+            _loadingMessage = '';
           });
           return;
         }
@@ -342,6 +546,7 @@ Future<void> _saveImageWithOverlay() async {
           setState(() {
             _isLoading = false;
             _errorMessage = 'Failed to decode image';
+            _loadingMessage = '';
           });
           return;
         }
@@ -351,11 +556,13 @@ Future<void> _saveImageWithOverlay() async {
         formatName = 'JPG (quality 70)';
       } else {
         // For PNG originals, keep as PNG
+        setState(() => _loadingMessage = 'Encoding as PNG...');
         final pngData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
         if (pngData == null) {
           setState(() {
             _isLoading = false;
             _errorMessage = 'Failed to convert image';
+            _loadingMessage = '';
           });
           return;
         }
@@ -363,6 +570,8 @@ Future<void> _saveImageWithOverlay() async {
         outputBytes = pngData.buffer.asUint8List();
         formatName = 'PNG';
       }
+      
+      setState(() => _loadingMessage = 'Opening save dialog...');
       
       // Save file
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
@@ -374,12 +583,10 @@ Future<void> _saveImageWithOverlay() async {
         dialogTitle: 'Save Image with Overlay',
         fileName: defaultFileName,
         allowedExtensions: isOriginalJpg ? ['jpg', 'jpeg'] : ['png'],
+        bytes: outputBytes,
       );
       
       if (result != null) {
-        final file = File(result);
-        await file.writeAsBytes(outputBytes);
-        
         print('\n=== Image Saved ===');
         print('File: $result');
         print('Size: ${originalSize.width.toInt()} x ${originalSize.height.toInt()}');
@@ -389,12 +596,13 @@ Future<void> _saveImageWithOverlay() async {
         
         setState(() {
           _isLoading = false;
+          _loadingMessage = '';
         });
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Saved: ${result.split('\\').last} (${(outputBytes.length / 1024).toStringAsFixed(1)} KB)'),
+              content: Text('Saved successfully (${(outputBytes.length / 1024).toStringAsFixed(1)} KB)'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),
@@ -403,6 +611,7 @@ Future<void> _saveImageWithOverlay() async {
       } else {
         setState(() {
           _isLoading = false;
+          _loadingMessage = '';
         });
       }
     } catch (e) {
@@ -410,6 +619,7 @@ Future<void> _saveImageWithOverlay() async {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Failed to save: $e';
+        _loadingMessage = '';
       });
     }
   }
@@ -422,7 +632,19 @@ Future<void> _saveImageWithOverlay() async {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
+        ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                _loadingMessage,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        )
         : SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -463,46 +685,40 @@ Future<void> _saveImageWithOverlay() async {
                 ],
               ),
               
-              if (_fitData != null && _fitData!.startTime != null)
-                const SizedBox(height: 16),
+              const SizedBox(height: 16),
               
               if (_fitData != null && _fitData!.startTime != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'FIT File Information',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                        ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showFitInfoDialog,
+                        icon: const Icon(Icons.info_outline),
+                        label: const Text('FIT Info'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade100,
+                          foregroundColor: Colors.blue.shade700,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      
-                      if (_fitData!.activityType != null)
-                        Text('Activity: ${_fitData!.activityType!}'),
-                      
-                      Text('Start Time: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(_fitData!.startTime!)}'),
-                      Text('End Time: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(_fitData!.endTime!)}'),
-                      Text('Duration: ${_fitData!.formatTotalDuration()}'),
-                      Text('Total Distance: ${_fitData!.formatTotalDistance()}'),
-                      Text('GPS Points: ${_fitData!.gpsPoints.length}'),
-                      
-const SizedBox(height: 16),
+                    ),
+                    if (_imagePath != null)
+                      const SizedBox(width: 16),
+                    if (_imagePath != null)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _showTimeSelectionDialog,
+                          icon: const Icon(Icons.schedule),
+                          label: const Text('Time Selection'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade100,
+                            foregroundColor: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              
+              const SizedBox(height: 16),
               
               TextField(
                 decoration: InputDecoration(
@@ -518,167 +734,28 @@ const SizedBox(height: 16),
                 },
               ),
               
-              const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      
+              if (_matchedPoint != null)
+                const SizedBox(height: 8),
+              
+              if (_matchedPoint != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, size: 16, color: Colors.green[700]),
+                      const SizedBox(width: 8),
                       Text(
-                        'Time Selection',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        'GPS matched',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[700],
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      
-                      if (_imageTimestamp != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'EXIF Time (from image):',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
-                            Text(
-                              DateFormat('yyyy-MM-dd HH:mm:ss').format(_imageTimestamp!),
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      
-                      if (_imageTimestamp == null)
-                        Text(
-                          'No EXIF time found in image',
-                          style: TextStyle(fontSize: 12, color: Colors.orange[700]),
-                        ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      CheckboxListTile(
-                        title: const Text('Use Manual Time'),
-                        subtitle: Text(
-                          _useManualTime 
-                            ? 'Manual time will be used for GPS matching'
-                            : 'EXIF time (if available) will be used',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        value: _useManualTime,
-                        onChanged: (value) {
-                          setState(() {
-                            _useManualTime = value ?? false;
-                          });
-                          _matchAndCalculate();
-                        },
-                      ),
-                      
-                      if (_useManualTime)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Manual Time:',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _manualTimestamp != null
-                                        ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_manualTimestamp!)
-                                        : 'Not set - click button to select',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: _manualTimestamp != null ? Colors.black : Colors.orange[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: _selectManualTime,
-                                icon: const Icon(Icons.edit, size: 18),
-                                label: Text(_manualTimestamp != null ? 'Change' : 'Select'),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: (_useManualTime ? Colors.orange.shade100 : Colors.green.shade100),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _useManualTime ? Icons.edit : Icons.check_circle,
-                              size: 16,
-                              color: (_useManualTime ? Colors.orange[700] : Colors.green[700]),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Currently using: ${_useManualTime ? "Manual Time" : "EXIF Time"}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: (_useManualTime ? Colors.orange[700] : Colors.green[700]),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      if (_matchedPoint != null)
-                        const SizedBox(height: 12),
-                      
-                      if (_matchedPoint != null)
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on, size: 16, color: Colors.green[700]),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'GPS Point Matched',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.green[700],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text('Lat: ${_matchedPoint!.latitude.toStringAsFixed(6)}', style: const TextStyle(fontSize: 12)),
-                              Text('Lon: ${_matchedPoint!.longitude.toStringAsFixed(6)}', style: const TextStyle(fontSize: 12)),
-                              if (_matchedPoint!.speed != null)
-                                Text('Speed: ${(_matchedPoint!.speed! * 3.6).toStringAsFixed(1)} km/h', style: const TextStyle(fontSize: 12)),
-                              if (_matchedPoint!.altitude != null)
-                                Text('Altitude: ${_matchedPoint!.altitude!.toStringAsFixed(0)} m', style: const TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -750,6 +827,7 @@ const SizedBox(height: 16),
                                           positionColor: _positionColor,
                                           positionRadius: _positionRadius,
                                           textColor: _textColor,
+                                          textSize: _textSize,
                                           showTrack: _showTrack,
                                           showPosition: _showPosition,
                                           showPace: _showPace,
