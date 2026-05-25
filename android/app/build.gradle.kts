@@ -34,11 +34,6 @@ android {
     }
 }
 
-dependencies {
-    // Uncomment this line after downloading ffmpeg-kit AAR file:
-    // implementation(files("libs/ffmpeg-kit-min-6.0-2.aar"))
-}
-
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

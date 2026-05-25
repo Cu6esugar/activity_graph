@@ -522,10 +522,10 @@ class _VideoScreenState extends State<VideoScreen> {
                       ),
                     ),
 
-                  if (_videoController != null && _fitData != null && !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS))
+                  if (_videoController != null && _fitData != null)
                     const SizedBox(height: 16),
 
-                  if (_videoController != null && _fitData != null && !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS))
+                  if (_videoController != null && _fitData != null)
                     ElevatedButton.icon(
                       onPressed: _exportVideo,
                       icon: const Icon(Icons.video_file),
@@ -534,44 +534,6 @@ class _VideoScreenState extends State<VideoScreen> {
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    ),
-
-                  if (_videoController != null && _fitData != null && !kIsWeb && (Platform.isAndroid || Platform.isIOS))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Video export on Android/iOS requires ffmpeg-kit',
-                              style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Steps to enable:',
-                              style: TextStyle(color: Colors.orange.shade700),
-                            ),
-                            Text(
-                              '1. Download ffmpeg-kit-min AAR from GitHub releases',
-                              style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
-                            ),
-                            Text(
-                              '2. Place in android/app/libs/ffmpeg-kit-min-6.0-2.aar',
-                              style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
-                            ),
-                            Text(
-                              '3. Uncomment the dependency in build.gradle.kts',
-                              style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
 
